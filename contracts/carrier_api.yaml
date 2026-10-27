@@ -1,0 +1,45 @@
+# Data contract: Carrier shipments with tracking events
+# Checked by tests/test_contracts.py against what the generator writes.
+source: api
+system: Carrier tracking REST API (API Gateway + Lambda)
+description: Carrier shipments with tracking events
+endpoint: GET /shipments?updated_since=<ISO timestamp>&page_token=<token>
+format:
+  type: json
+  pagination: next_page_token
+primary_key:
+- shipment_id
+notes:
+- EuroExpress (EUX) sends event_type in lower case
+- events can be delivered twice with the same event_id
+columns:
+- name: shipment_id
+  type: string
+- name: order_number
+  type: string
+- name: carrier_code
+  type: string
+- name: carrier_name
+  type: string
+- name: service_level
+  type: string
+- name: tracking_number
+  type: string
+- name: origin_warehouse_id
+  type: string
+- name: destination_city
+  type: string
+- name: destination_postal_code
+  type: string
+- name: destination_country
+  type: string
+- name: promised_delivery_date
+  type: date
+- name: status
+  type: string
+- name: created_at
+  type: timestamp
+- name: updated_at
+  type: timestamp
+- name: events
+  type: array<struct<event_id:string,event_type:string,event_ts:timestamp,location:string>>

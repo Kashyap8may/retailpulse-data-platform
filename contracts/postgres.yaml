@@ -1,0 +1,299 @@
+# Data contract: RDS PostgreSQL, schema shop
+# Checked by tests/test_contracts.py against what the generator writes.
+source: postgres
+system: RDS PostgreSQL, schema shop
+incremental_column: updated_at
+tables:
+  product_categories:
+    primary_key:
+    - category_id
+    columns:
+    - name: category_id
+      type: integer
+    - name: parent_category_id
+      type: integer
+      nullable: true
+    - name: category_name
+      type: string
+    - name: category_level
+      type: string
+    - name: created_at
+      type: timestamp
+    - name: updated_at
+      type: timestamp
+  brands:
+    primary_key:
+    - brand_id
+    columns:
+    - name: brand_id
+      type: integer
+    - name: brand_name
+      type: string
+    - name: primary_department
+      type: string
+    - name: created_at
+      type: timestamp
+    - name: updated_at
+      type: timestamp
+  suppliers:
+    primary_key:
+    - supplier_id
+    columns:
+    - name: supplier_id
+      type: string
+    - name: supplier_name
+      type: string
+    - name: country_code
+      type: string
+    - name: lead_time_days
+      type: integer
+    - name: contact_email
+      type: string
+      nullable: true
+    - name: created_at
+      type: timestamp
+    - name: updated_at
+      type: timestamp
+  products:
+    primary_key:
+    - product_id
+    columns:
+    - name: product_id
+      type: integer
+    - name: sku
+      type: string
+    - name: product_name
+      type: string
+    - name: category_id
+      type: integer
+    - name: brand_id
+      type: integer
+    - name: supplier_id
+      type: string
+    - name: vendor_sku
+      type: string
+    - name: unit_cost_usd
+      type: decimal
+    - name: list_price_usd
+      type: decimal
+    - name: weight_kg
+      type: decimal
+      nullable: true
+    - name: is_active
+      type: boolean
+    - name: created_at
+      type: timestamp
+    - name: updated_at
+      type: timestamp
+  stores:
+    primary_key:
+    - store_id
+    columns:
+    - name: store_id
+      type: string
+    - name: store_name
+      type: string
+    - name: store_type
+      type: string
+    - name: city
+      type: string
+    - name: region
+      type: string
+    - name: country_code
+      type: string
+    - name: timezone
+      type: string
+    - name: opened_date
+      type: date
+    - name: floor_area_sqm
+      type: integer
+      nullable: true
+    - name: created_at
+      type: timestamp
+    - name: updated_at
+      type: timestamp
+  warehouses:
+    primary_key:
+    - warehouse_id
+    columns:
+    - name: warehouse_id
+      type: string
+    - name: warehouse_name
+      type: string
+    - name: city
+      type: string
+    - name: country_code
+      type: string
+    - name: created_at
+      type: timestamp
+    - name: updated_at
+      type: timestamp
+  loyalty_tiers:
+    primary_key:
+    - tier_code
+    columns:
+    - name: tier_code
+      type: string
+    - name: tier_name
+      type: string
+    - name: min_lifetime_spend_usd
+      type: integer
+    - name: discount_pct
+      type: integer
+  customers:
+    primary_key:
+    - customer_id
+    columns:
+    - name: customer_id
+      type: integer
+    - name: first_name
+      type: string
+      nullable: true
+    - name: last_name
+      type: string
+      nullable: true
+    - name: email
+      type: string
+      nullable: true
+    - name: phone
+      type: string
+      nullable: true
+    - name: address_line1
+      type: string
+      nullable: true
+    - name: city
+      type: string
+    - name: postal_code
+      type: string
+      nullable: true
+    - name: country_code
+      type: string
+    - name: loyalty_card_no
+      type: string
+      nullable: true
+    - name: loyalty_tier
+      type: string
+    - name: marketing_opt_in
+      type: boolean
+    - name: created_at
+      type: timestamp
+    - name: updated_at
+      type: timestamp
+  orders:
+    primary_key:
+    - order_id
+    columns:
+    - name: order_id
+      type: integer
+    - name: order_number
+      type: string
+    - name: customer_id
+      type: integer
+    - name: order_ts
+      type: timestamp
+    - name: channel
+      type: string
+    - name: status
+      type: string
+    - name: currency
+      type: string
+    - name: shipping_service
+      type: string
+    - name: ship_to_city
+      type: string
+      nullable: true
+    - name: ship_to_postal_code
+      type: string
+      nullable: true
+    - name: ship_to_country
+      type: string
+    - name: fulfilment_warehouse_id
+      type: string
+    - name: subtotal_amount
+      type: decimal
+    - name: discount_amount
+      type: decimal
+    - name: shipping_amount
+      type: decimal
+    - name: tax_amount
+      type: decimal
+    - name: total_amount
+      type: decimal
+    - name: created_at
+      type: timestamp
+    - name: updated_at
+      type: timestamp
+  order_items:
+    primary_key:
+    - order_item_id
+    columns:
+    - name: order_item_id
+      type: integer
+    - name: order_id
+      type: integer
+    - name: line_number
+      type: integer
+    - name: product_id
+      type: integer
+    - name: quantity
+      type: integer
+    - name: unit_price
+      type: decimal
+    - name: discount_amount
+      type: decimal
+    - name: promotion_id
+      type: string
+      nullable: true
+    - name: created_at
+      type: timestamp
+    - name: updated_at
+      type: timestamp
+  payments:
+    primary_key:
+    - payment_id
+    columns:
+    - name: payment_id
+      type: integer
+    - name: order_id
+      type: integer
+    - name: payment_method
+      type: string
+    - name: payment_type
+      type: string
+    - name: status
+      type: string
+    - name: amount
+      type: decimal
+    - name: currency
+      type: string
+    - name: provider_reference
+      type: string
+      nullable: true
+    - name: created_at
+      type: timestamp
+    - name: updated_at
+      type: timestamp
+  returns:
+    primary_key:
+    - return_id
+    columns:
+    - name: return_id
+      type: integer
+    - name: order_id
+      type: integer
+    - name: order_item_id
+      type: integer
+    - name: quantity
+      type: integer
+    - name: reason_code
+      type: string
+    - name: status
+      type: string
+    - name: refund_amount
+      type: decimal
+    - name: currency
+      type: string
+    - name: created_at
+      type: timestamp
+    - name: updated_at
+      type: timestamp

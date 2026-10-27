@@ -1,0 +1,37 @@
+# Data contract: Weekly export of the marketing promotions calendar
+# Checked by tests/test_contracts.py against what the generator writes.
+source: s3
+system: S3 bucket, prefix promotions/
+description: Weekly export of the marketing promotions calendar
+path: promotions/export_date=YYYY-MM-DD/promotions.json
+format:
+  type: json
+  root: promotions[]
+primary_key:
+- promotion_id
+notes:
+- the same promotion appears in several exports; the latest export wins
+columns:
+- name: promotion_id
+  type: string
+- name: promotion_name
+  type: string
+- name: discount_pct
+  type: integer
+- name: channel
+  type: string
+  allowed:
+  - ALL
+  - ONLINE
+  - STORE
+- name: category_id
+  type: integer
+  nullable: true
+- name: country_codes
+  type: array<string>
+- name: start_date
+  type: date
+- name: end_date
+  type: date
+- name: campaign
+  type: struct<campaign_id:string,campaign_name:string,budget_usd:integer>

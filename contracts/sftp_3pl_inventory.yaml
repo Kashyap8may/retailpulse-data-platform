@@ -1,0 +1,33 @@
+# Data contract: End-of-day stock per SKU from the 3PL warehouse operator
+# Checked by tests/test_contracts.py against what the generator writes.
+source: sftp
+system: SFTP server, folder 3pl/inventory/
+description: End-of-day stock per SKU from the 3PL warehouse operator
+path: 3pl/inventory/INV_<warehouse_id>_<YYYYMMDD>.psv
+format:
+  type: psv
+  delimiter: '|'
+  record_types:
+    H: 'header: H|RETAILPULSE|3PL-INVENTORY|<YYYYMMDD>|<version>'
+    D: detail rows, first D row holds column names
+    T: 'trailer: T|<detail row count>'
+primary_key:
+- snapshot_date
+- warehouse_id
+- sku
+notes:
+- reject the file when the trailer count does not match the detail rows
+columns:
+- name: snapshot_date
+  type: date
+- name: warehouse_id
+  type: string
+- name: sku
+  type: string
+- name: on_hand_qty
+  type: integer
+- name: on_order_qty
+  type: integer
+- name: last_receipt_date
+  type: date
+  nullable: true

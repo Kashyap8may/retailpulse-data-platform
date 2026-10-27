@@ -48,10 +48,55 @@ flowchart LR
 | 4 | SFTP | EC2 OpenSSH server | 3PL warehouse inventory snapshots, supplier purchase-order receipts | SFTP pull to a volume, then Auto Loader |
 | + | Public API | none | Daily FX rates | Small daily task |
 
+> **Databricks Free Edition.** The workspace is Databricks Free Edition: serverless compute only, with outbound internet limited to trusted domains. Small AWS jobs therefore extract each source into an S3 landing area, and Databricks ingests from there. The exact bridge from S3 into Databricks is settled in M4.
+
+## Data generator
+
+`data_generator/` simulates 90 days of the business, one day at a time. The channels share state: online and store sales draw down warehouse stock, low stock raises purchase orders, late supplier deliveries cause stock-outs, and customer spend moves customers up loyalty tiers. Every source is written from that one simulation, so keys line up across systems the way they do in a real company.
+
+```bash
+make generate          # full volume, about 90 seconds
+make generate-small    # 14 days at 5% volume, a few seconds
+```
+
+The same seed always produces the same files. Output goes to `output/` (git-ignored) and mirrors the four source systems:
+
+| Folder | Source system | Contents (default run) |
+|---|---|---|
+| `output/postgres/` | RDS PostgreSQL | 12 tables as CSV: ~50k customers, ~144k orders, ~250k order lines, payments, returns, products, stores |
+| `output/carrier_api/` | Carrier REST API | `shipments.jsonl`: ~140k shipments with nested tracking events |
+| `output/s3/pos_sales/` | S3 file drop | ~3,500 CSV files (one per store per day, ~1M lines), by landing date |
+| `output/s3/promotions/` | S3 file drop | weekly JSON export of the promotions calendar |
+| `output/sftp/3pl/inventory/` | SFTP | daily stock file per warehouse (pipe-delimited, header and trailer) |
+| `output/sftp/suppliers/deliveries/` | SFTP | daily goods-received file, keyed by the supplier's own product code |
+
+The schema of every feed is defined in [`contracts/`](contracts/), and the tests check the generator against it. The Postgres DDL is in [`data_generator/sources/postgres_schema.sql`](data_generator/sources/postgres_schema.sql).
+
+### Data problems built in on purpose
+
+Silver has real cleaning work to do, because the sources behave the way production sources do:
+
+| Source | Problem | What the pipeline must do |
+|---|---|---|
+| Postgres | Rows are updated in place (order status, customer address, loyalty tier) | Capture changes incrementally; build SCD Type 2 history for customers |
+| Postgres | Some customers signed up twice, with the email in a different case | Deduplicate customers on a normalised email |
+| Carrier API | EuroExpress sends event types in lower case; some events arrive twice | Standardise codes; deduplicate on `event_id` |
+| POS files | About 3% of files land 2 to 3 days late; some files are resent | Process by business date, not arrival date; deduplicate resent files |
+| POS files | Timestamps are store-local with no time zone; some SKUs are lower case or unknown | Convert with the store's time zone; quarantine unknown SKUs |
+| Promotions | The same promotion appears in many weekly exports and can change between them | Keep the latest version of each promotion |
+| SFTP inventory | About 1 file in 50 is truncated, so its trailer count does not match | Reconcile detail rows with the trailer; reject bad files |
+| SFTP deliveries | Layout changes from v1 to v2 on day 45 (renamed column, new columns, timestamps with offset) | Handle schema evolution by reading the version in the header |
+| SFTP deliveries | Suppliers use their own product codes | Map `vendor_sku` to our product through the product master |
+| All | Three currencies, many time zones | Convert to a reporting currency with the FX feed; store UTC plus local dates |
+
 ## Repository layout
 
 ```
-├── data_generator/      # Python package that generates realistic data for every source
+├── data_generator/      # simulates the business and writes data for every source
+│   ├── master.py         # products, stores, customers, suppliers, promotions
+│   ├── activity/         # day-by-day simulation (orders, POS, shipments, returns, stock)
+│   ├── sources/          # one writer per source system, plus the Postgres DDL
+│   └── simulate.py       # command line entry point
 ├── contracts/           # schema contract (YAML) for each source feed
 ├── infra/terraform/     # AWS sources and Databricks objects as code
 ├── services/            # Lambda code for the mock carrier API
@@ -67,7 +112,7 @@ flowchart LR
 | Milestone | What it delivers | Status |
 |---|---|---|
 | M0 Scaffold | Repo layout, README, project plan, CI skeleton | Done |
-| M1 Data generator | Seeded master data and generators for every source, with tests | Planned |
+| M1 Data generator | Seeded master data and generators for every source, data contracts, tests | Done |
 | M2 AWS sources | Terraform for S3, RDS, carrier API, SFTP server, secrets, IAM, budget alert | Planned |
 | M3 Load the sources | Seed 90 days of history into each source, then a daily simulator | Planned |
 | M4 Databricks foundation | Catalogs, schemas, storage credential, external locations, secret scope | Planned |

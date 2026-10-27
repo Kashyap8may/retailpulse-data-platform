@@ -1,0 +1,70 @@
+# Data contract: Goods received against purchase orders, keyed by vendor_sku
+# Checked by tests/test_contracts.py against what the generator writes.
+source: sftp
+system: SFTP server, folder suppliers/deliveries/
+description: Goods received against purchase orders, keyed by vendor_sku
+path: suppliers/deliveries/DLV_<YYYYMMDD>.psv
+format:
+  type: psv
+  delimiter: '|'
+  record_types:
+    H: 'header: H|RETAILPULSE|SUPPLIER-DELIVERIES|<YYYYMMDD>|<version>'
+    D: detail rows, first D row holds column names
+    T: 'trailer: T|<detail row count>'
+primary_key:
+- receipt_id
+versions:
+  v1:
+    columns:
+    - name: receipt_id
+      type: string
+    - name: po_number
+      type: string
+    - name: po_line_number
+      type: integer
+    - name: supplier_id
+      type: string
+    - name: vendor_sku
+      type: string
+    - name: warehouse_id
+      type: string
+    - name: ordered_qty
+      type: integer
+    - name: received_qty
+      type: integer
+    - name: expected_date
+      type: date
+    - name: received_ts
+      type: timestamp
+    notes:
+    - received_ts has no offset and is UTC
+  v2:
+    columns:
+    - name: receipt_id
+      type: string
+    - name: po_number
+      type: string
+    - name: po_line_number
+      type: integer
+    - name: supplier_id
+      type: string
+    - name: vendor_sku
+      type: string
+    - name: warehouse_id
+      type: string
+    - name: ordered_qty
+      type: integer
+    - name: qty_received
+      type: integer
+    - name: unit_cost
+      type: decimal
+    - name: cost_currency
+      type: string
+    - name: expected_date
+      type: date
+    - name: received_ts
+      type: timestamp
+    notes:
+    - received_qty renamed to qty_received
+    - unit_cost and cost_currency added
+    - received_ts is ISO 8601 with offset

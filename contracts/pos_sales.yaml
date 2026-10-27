@@ -1,0 +1,52 @@
+# Data contract: In-store POS sales, one CSV per store per business day
+# Checked by tests/test_contracts.py against what the generator writes.
+source: s3
+system: S3 bucket, prefix pos_sales/
+description: In-store POS sales, one CSV per store per business day
+path: pos_sales/landing_date=YYYY-MM-DD/pos_<store_id>_<YYYYMMDD>[_resend].csv
+format:
+  type: csv
+  header: true
+  delimiter: ','
+primary_key:
+- transaction_id
+- line_number
+notes:
+- transaction_local_ts is store-local time with no offset; use stores.timezone
+- quantity is negative for in-store returns
+- files can arrive up to 3 days late and can be resent
+columns:
+- name: transaction_id
+  type: string
+- name: line_number
+  type: integer
+- name: business_date
+  type: date
+- name: transaction_local_ts
+  type: timestamp
+- name: store_id
+  type: string
+- name: register_id
+  type: string
+- name: cashier_id
+  type: string
+- name: sku
+  type: string
+- name: quantity
+  type: integer
+- name: unit_price
+  type: decimal
+- name: discount_amount
+  type: decimal
+- name: line_amount
+  type: decimal
+- name: currency
+  type: string
+- name: tender_type
+  type: string
+- name: loyalty_card_no
+  type: string
+  nullable: true
+- name: promotion_id
+  type: string
+  nullable: true
