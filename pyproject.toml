@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "retailpulse"
+version = "0.1.0"
+description = "Data generators and pipelines for the RetailPulse data platform"
+requires-python = ">=3.11"
+dependencies = [
+    "faker>=24",
+    "pyyaml>=6",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.scripts]
+retailpulse-generate = "data_generator.simulate:main"
+
+[tool.setuptools.packages.find]
+include = ["data_generator*"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
