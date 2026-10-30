@@ -134,4 +134,4 @@ make test
 
 AWS and Databricks credentials are never stored in this repository. Configure them locally with `aws configure` (or AWS SSO) and `databricks auth login`.
 
-See [docs/project-plan.md](docs/project-plan.md) for the full plan.
+See [docs/project-plan.md](docs/project-plan.md) for the full plan and [docs/HANDOFF.md](docs/HANDOFF.md) for the current state, open questions and next steps.
