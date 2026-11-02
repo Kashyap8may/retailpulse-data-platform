@@ -1,0 +1,3 @@
+# Keep LF everywhere. A Windows checkout with CRLF would break the EC2 user-data script and
+# change the Lambda zip hash, making Terraform replace the SFTP server and redeploy the API.
+* text=auto eol=lf
