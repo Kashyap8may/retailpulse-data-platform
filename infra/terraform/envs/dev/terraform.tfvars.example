@@ -1,0 +1,7 @@
+# Copy to terraform.tfvars (git-ignored) and fill in.
+alert_email = "you@example.com"
+
+# monthly_budget_usd = 10
+# window_start_cron  = "cron(0 6 * * ? *)"   # UTC
+# window_stop_cron   = "cron(0 8 * * ? *)"   # UTC
+# schedule_enabled   = true

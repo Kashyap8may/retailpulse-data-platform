@@ -1,0 +1,48 @@
+#!/bin/bash
+# First boot: create the chrooted SFTP user and folders, harden sshd, publish the public IP.
+set -euo pipefail
+
+groupadd -f sftponly
+id ${sftp_user} >/dev/null 2>&1 || useradd -g sftponly -s /sbin/nologin -M -d /data ${sftp_user}
+
+# The chroot root must be owned by root; the user writes only under /data inside it.
+mkdir -p /sftp/${sftp_user}/data/3pl/inventory /sftp/${sftp_user}/data/suppliers/deliveries /sftp/${sftp_user}/data/archive
+chown root:root /sftp /sftp/${sftp_user}
+chmod 755 /sftp /sftp/${sftp_user}
+chown -R ${sftp_user}:sftponly /sftp/${sftp_user}/data
+
+mkdir -p /etc/ssh/authorized_keys
+echo '${public_key}' > /etc/ssh/authorized_keys/${sftp_user}
+chmod 644 /etc/ssh/authorized_keys/${sftp_user}
+
+# Included files are read first and the first value wins, so this disables passwords for everyone.
+cat > /etc/ssh/sshd_config.d/10-retailpulse.conf <<'EOF'
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin no
+EOF
+
+# A Match block must sit at the end of the main file so it does not swallow later settings.
+if ! grep -q '^Match Group sftponly' /etc/ssh/sshd_config; then
+  cat >> /etc/ssh/sshd_config <<'EOF'
+
+Match Group sftponly
+    ChrootDirectory /sftp/%u
+    ForceCommand internal-sftp
+    AuthorizedKeysFile /etc/ssh/authorized_keys/%u
+    AllowTcpForwarding no
+    X11Forwarding no
+EOF
+fi
+sshd -t
+systemctl restart sshd
+
+cat > /var/lib/cloud/scripts/per-boot/publish-host.sh <<'EOF'
+#!/bin/bash
+set -euo pipefail
+TOKEN=$(curl -sf -X PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
+IP=$(curl -sf -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4)
+aws ssm put-parameter --region ${region} --name ${host_param} --type String --overwrite --value "$IP"
+EOF
+chmod 755 /var/lib/cloud/scripts/per-boot/publish-host.sh
+/var/lib/cloud/scripts/per-boot/publish-host.sh

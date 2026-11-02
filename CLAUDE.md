@@ -8,7 +8,7 @@ A portfolio data engineering project made to look like production. Four differen
 
 ## Ground rules from the owner
 
-- **The owner builds the gold snowflake model (milestone M7) personally.** Describe it, prepare silver for it, but never implement gold tables. `databricks/gold/` is reserved for the owner.
+- **The owner builds the whole medallion architecture (bronze, silver and gold, milestones M5 to M7) personally.** Never implement those layers. Assistants build the AWS sources, the daily source simulator and the data contracts. `databricks/gold/` is reserved for the owner.
 - **Commit at the end of every milestone and update `README.md` every time**, including the Progress table. The README is the project's showcase.
 - **Milestones are tagged `m0`, `m1`, ...** The owner adds tags locally: `git tag mN <sha> && git push origin --tags`.
 - **Ask before pushing** to GitHub or opening a pull request.

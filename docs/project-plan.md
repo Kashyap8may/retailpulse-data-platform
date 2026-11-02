@@ -6,7 +6,7 @@ The living plan, with diagrams, is kept as a shared document: [RetailPulse: Data
 
 - Four AWS source types (relational database, REST API, S3 file drop, SFTP) plus a public FX API. A Kinesis clickstream source is a stretch goal.
 - Ingestion into Databricks with Unity Catalog: one catalog per environment (`retailpulse_dev`, `retailpulse_prod`) with schemas `bronze`, `silver` and `gold`.
-- Bronze and silver are built in this repository. Gold, the snowflake-schema model, is built by the project owner.
+- The project owner builds bronze, silver and gold, including the snowflake-schema model. The AWS sources and the daily source simulator are built first, so those layers read from sources that change every day.
 
 ## Target gold model (snowflake schema)
 

@@ -17,6 +17,9 @@ output/
 !*.tfvars.example
 .terraform.lock.hcl
 crash.log
+backend.hcl
+*.tfplan
+.build/
 
 # Databricks
 .databricks/
