@@ -312,7 +312,7 @@ def _build_customers(md: MasterData, cfg: GeneratorConfig) -> None:
         if rng.random() < 0.8:
             signup = history_start + timedelta(days=rng.randint(0, (cfg.start_date - history_start).days - 1))
         else:
-            signup = cfg.start_date + timedelta(days=rng.randint(0, cfg.days - 1))
+            signup = cfg.start_date + timedelta(days=rng.randint(0, cfg.horizon_days - 1))
         signup_ts = _ts(signup, rng, 6, 23)
         first, last = fake.first_name(), fake.last_name()
         activity = rng.paretovariate(1.6)
@@ -339,8 +339,8 @@ def _build_customers(md: MasterData, cfg: GeneratorConfig) -> None:
             # Hidden: shopping propensity and a possible move during the window (drives SCD2 history).
             "_activity": activity,
             "_prior_spend": prior_spend,
-            "_move_on": cfg.start_date + timedelta(days=rng.randint(1, cfg.days - 1))
-            if rng.random() < 0.08
+            "_move_on": cfg.start_date + timedelta(days=rng.randint(1, cfg.horizon_days - 1))
+            if rng.random() < 0.32
             else None,
         }
         md.customers.append(customer)
@@ -382,7 +382,7 @@ def _build_promotions(md: MasterData, cfg: GeneratorConfig) -> None:
         )
     for i in range(1, cfg.n_promotions + 1):
         campaign = rng.choice(md.campaigns)
-        start = cfg.start_date + timedelta(days=rng.randint(-10, cfg.days - 5))
+        start = cfg.start_date + timedelta(days=rng.randint(-10, cfg.horizon_days - 5))
         scope = rng.choice(level2) if rng.random() < 0.8 else None
         pct = rng.choice([10, 15, 20, 25, 30])
         md.promotions.append(

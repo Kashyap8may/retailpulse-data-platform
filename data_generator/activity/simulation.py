@@ -220,7 +220,7 @@ class Simulator:
     def _online_day(self, d: date) -> None:
         cfg = self.cfg
         rng = rng_for(cfg.seed, "online", d)
-        trend = 1 + 0.15 * (d - cfg.start_date).days / max(cfg.days, 1)
+        trend = 1 + 0.15 * (d - cfg.start_date).days / cfg.horizon_days
         n_orders = int(cfg.online_orders_per_day * self._day_factor(d, 1.2) * trend * rng.uniform(0.85, 1.15))
         for _ in range(n_orders):
             day_start = datetime.combine(d, time(0), tzinfo=UTC)

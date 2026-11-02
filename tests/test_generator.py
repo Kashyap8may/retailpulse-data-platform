@@ -1,8 +1,12 @@
 import csv
 import hashlib
 import json
-from datetime import datetime
+from dataclasses import replace
+from datetime import UTC, datetime, time, timedelta
 
+import pytest
+
+from data_generator.config import GeneratorConfig
 from data_generator.simulate import generate
 
 
@@ -23,6 +27,24 @@ def test_same_seed_gives_identical_output(generated, small_cfg, tmp_path):
     out, _ = generated
     generate(small_cfg, tmp_path)
     assert _tree_hash(out) == _tree_hash(tmp_path)
+
+
+def test_adding_a_day_never_changes_earlier_days(small_cfg, tmp_path):
+    shorter, longer = tmp_path / "shorter", tmp_path / "longer"
+    shorter.mkdir()
+    longer.mkdir()
+    # Same as_of, so the database and API views must match even though one run simulated more days.
+    as_of = datetime.combine(small_cfg.end_date + timedelta(days=1), time.min, tzinfo=UTC)
+    generate(small_cfg, shorter, as_of)
+    generate(replace(small_cfg, days=small_cfg.days + 1), longer, as_of)
+    for path in (p for p in shorter.rglob("*") if p.is_file() and p.name != "_manifest.json"):
+        other = longer / path.relative_to(shorter)
+        assert other.read_bytes() == path.read_bytes(), path.relative_to(shorter)
+
+
+def test_days_cannot_exceed_the_horizon():
+    with pytest.raises(ValueError):
+        GeneratorConfig(days=366, horizon_days=365)
 
 
 def test_every_source_has_data(generated):

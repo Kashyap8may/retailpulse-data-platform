@@ -11,11 +11,14 @@ class GeneratorConfig:
     seed: int = 42
     start_date: date = date(2026, 7, 1)
     days: int = 90
+    # Fixed calendar for signups, moves, promotions and the sales trend. These must not depend on
+    # ``days``: a daily run adds one day, and that must never rewrite days already published.
+    horizon_days: int = 365
 
     n_customers: int = 50_000
     n_products: int = 1_200
     n_suppliers: int = 60
-    n_promotions: int = 30
+    n_promotions: int = 120
 
     online_orders_per_day: int = 1_500
     pos_txns_per_store_per_day: int = 120
@@ -24,6 +27,10 @@ class GeneratorConfig:
     dq_rate: float = 0.01
     # Day (counted from start_date) when suppliers switch to the v2 receipts file layout.
     supplier_schema_v2_day: int = 45
+
+    def __post_init__(self) -> None:
+        if self.days > self.horizon_days:
+            raise ValueError(f"days ({self.days}) cannot exceed horizon_days ({self.horizon_days})")
 
     @property
     def end_date(self) -> date:
