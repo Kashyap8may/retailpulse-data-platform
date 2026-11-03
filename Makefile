@@ -1,4 +1,4 @@
-.PHONY: install lint test generate generate-small clean \
+.PHONY: install lint test generate generate-small clean daily publish simulator-deploy simulator-run \
 	infra-bootstrap infra-init infra-plan infra-apply infra-destroy sources-up sources-down
 
 TF_DEV := terraform -chdir=infra/terraform/envs/dev
@@ -25,6 +25,23 @@ generate-small:
 
 clean:
 	rm -rf output .pytest_cache .ruff_cache
+
+# --- Daily source simulator. Needs `pip install -e ".[publish]"` for publish.
+
+# Split the one-year calendar into day folders and upload them (once, about 25 minutes plus upload).
+daily:
+	python -m data_generator.daily --out output/daily
+	aws s3 sync output/daily s3://$$(aws ssm get-parameter --name /retailpulse/dev/s3/simulator_bucket --query Parameter.Value --output text)/days/
+
+# Publish pending days from this machine (the Databricks job does this every morning).
+publish:
+	python -m data_generator.publish --verbose
+
+simulator-deploy:
+	databricks bundle deploy
+
+simulator-run:
+	databricks bundle run source_simulator
 
 # --- AWS sources (Terraform). Needs `aws configure` and Terraform 1.10+.
 

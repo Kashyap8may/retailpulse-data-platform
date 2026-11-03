@@ -3,6 +3,12 @@ resource "random_password" "db" {
   special = false
 }
 
+# Read-only login for the pipelines; the publisher creates the role inside Postgres.
+resource "random_password" "db_reader" {
+  length  = 32
+  special = false
+}
+
 resource "aws_db_subnet_group" "orders" {
   name       = "${local.p}-orders"
   subnet_ids = data.aws_subnets.default.ids

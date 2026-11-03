@@ -14,9 +14,16 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.5"]
+# Publishing into the live AWS sources (data_generator.publish).
+publish = ["boto3>=1.34", "psycopg[binary]>=3.1", "paramiko>=3.4"]
 
 [project.scripts]
 retailpulse-generate = "data_generator.simulate:main"
+retailpulse-daily = "data_generator.daily:main"
+retailpulse-publish = "data_generator.publish:main"
+
+[tool.setuptools.package-data]
+data_generator = ["sources/*.sql"]
 
 [tool.setuptools.packages.find]
 include = ["data_generator*"]

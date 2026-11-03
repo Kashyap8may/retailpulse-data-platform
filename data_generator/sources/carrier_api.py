@@ -21,25 +21,32 @@ from .common import json_default
 
 
 def shipment_documents(sim: SimulationResult, as_of: datetime, seed: int, dq_rate: float):
-    rng = rng_for(seed, "carrier-dq")
     for shp in sim.shipments:
-        events = [e for e in shp["events"] if e["event_ts"] <= as_of]
-        if not events:
-            continue
-        out_events = []
-        for e in events:
-            event = dict(e)
-            if shp["carrier_code"] == "EUX":
-                event["event_type"] = event["event_type"].lower()
-            out_events.append(event)
-            if rng.random() < dq_rate:
-                out_events.append(dict(event))
-        doc = {k: v for k, v in shp.items() if k != "events"}
-        doc["status"] = out_events[-1]["event_type"]
-        doc["created_at"] = events[0]["event_ts"]
-        doc["updated_at"] = events[-1]["event_ts"]
-        doc["events"] = out_events
-        yield doc
+        doc = shipment_document(shp, as_of, seed, dq_rate)
+        if doc is not None:
+            yield doc
+
+
+def shipment_document(shp: dict, as_of: datetime, seed: int, dq_rate: float) -> dict | None:
+    """One shipment as the API returns it at ``as_of``; None if it had no events yet."""
+    events = [e for e in shp["events"] if e["event_ts"] <= as_of]
+    if not events:
+        return None
+    out_events = []
+    for e in events:
+        event = dict(e)
+        if shp["carrier_code"] == "EUX":
+            event["event_type"] = event["event_type"].lower()
+        out_events.append(event)
+        # Keyed by event so a duplicate looks the same whichever day the API is read.
+        if rng_for(seed, "carrier-dq", e["event_id"]).random() < dq_rate:
+            out_events.append(dict(event))
+    doc = {k: v for k, v in shp.items() if k != "events"}
+    doc["status"] = out_events[-1]["event_type"]
+    doc["created_at"] = events[0]["event_ts"]
+    doc["updated_at"] = events[-1]["event_ts"]
+    doc["events"] = out_events
+    return doc
 
 
 def write_carrier_api(

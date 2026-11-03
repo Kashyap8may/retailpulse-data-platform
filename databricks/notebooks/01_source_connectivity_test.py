@@ -52,14 +52,18 @@ def s3_sources():
     return f"listed sources bucket, {resp['KeyCount']} keys"
 
 
-def s3_simulator_is_private():
-    try:
-        session.client("s3").list_objects_v2(Bucket=param("s3/simulator_bucket"), MaxKeys=1)
-    except session.client("s3").exceptions.ClientError as exc:
-        if exc.response["Error"]["Code"] == "AccessDenied":
-            return "access denied, as intended"
-        raise
-    raise RuntimeError("pipelines user can read the simulator bucket")
+def restricted_parameters_are_hidden():
+    # The pipelines user must not read the admin password or learn where the simulator keeps
+    # the future; both reads should be refused.
+    for name in ["postgres/password", "s3/simulator_bucket"]:
+        try:
+            param(name, secret=True)
+        except ssm.exceptions.ClientError as exc:
+            if exc.response["Error"]["Code"] != "AccessDeniedException":
+                raise
+        else:
+            raise RuntimeError(f"pipelines user can read {name}")
+    return "admin password and simulator bucket are refused, as intended"
 
 
 def carrier_api():
@@ -78,13 +82,14 @@ def postgres():
         host=param("postgres/host"),
         port=int(param("postgres/port")),
         dbname=param("postgres/database"),
-        user=param("postgres/username"),
-        password=param("postgres/password", secret=True),
+        user=param("postgres/reader_username"),
+        password=param("postgres/reader_password", secret=True),
         sslmode="require",
         connect_timeout=15,
     ) as conn:
         version = conn.execute("select version()").fetchone()[0]
-    return version.split(",")[0]
+        orders = conn.execute("select count(*) from shop.orders").fetchone()[0]
+    return f"{version.split(',')[0]}, {orders} orders visible to the reader"
 
 
 def postgres_jdbc():
@@ -92,12 +97,12 @@ def postgres_jdbc():
     df = (
         spark.read.format("jdbc")
         .option("url", f"{url}?sslmode=require")
-        .option("user", param("postgres/username"))
-        .option("password", param("postgres/password", secret=True))
-        .option("query", "select 1 as ok")
+        .option("user", param("postgres/reader_username"))
+        .option("password", param("postgres/reader_password", secret=True))
+        .option("query", "select count(*) as n from shop.customers")
         .load()
     )
-    return f"spark JDBC read returned {df.collect()[0]['ok']}"
+    return f"spark JDBC read {df.collect()[0]['n']} customers"
 
 
 def sftp():
@@ -120,7 +125,7 @@ def sftp():
 
 for name, fn in [
     ("s3 sources bucket", s3_sources),
-    ("s3 simulator bucket", s3_simulator_is_private),
+    ("restricted parameters", restricted_parameters_are_hidden),
     ("carrier api", carrier_api),
     ("postgres (psycopg)", postgres),
     ("postgres (spark jdbc)", postgres_jdbc),

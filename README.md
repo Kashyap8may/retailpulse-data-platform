@@ -48,7 +48,7 @@ flowchart LR
 | 4 | SFTP | EC2 OpenSSH server | 3PL warehouse inventory snapshots, supplier purchase-order receipts | SFTP pull to a volume, then Auto Loader |
 | + | Public API | none | Daily FX rates | Small daily task |
 
-> **Databricks Free Edition.** The workspace is Databricks Free Edition: serverless compute only, with outbound internet limited to trusted domains. Small AWS jobs therefore extract each source into an S3 landing area, and Databricks ingests from there. The exact bridge from S3 into Databricks is settled in M4.
+> **Databricks Free Edition.** The workspace is Databricks Free Edition, serverless compute only. A connectivity check showed that it can reach every source directly (HTTPS, Postgres on 5432 and SFTP on 22), so the pipelines pull straight from AWS.
 
 ## Data generator
 
@@ -115,6 +115,30 @@ make sources-up / sources-down     # outside the daily window
 make infra-destroy                 # remove everything
 ```
 
+## Daily source simulator
+
+The sources behave like live systems: they hold history from 2026-06-30 and receive the next day's changes every morning.
+
+1. `python -m data_generator.daily` simulates a fixed one-year calendar once and writes one folder per day with only that day's changes: new and updated database rows, updated shipments, and the files that arrive. Tests prove that replaying the days in order rebuilds exactly the full dataset.
+2. The folders sit in the private `simulator` bucket, which the pipelines cannot read.
+3. `python -m data_generator.publish` applies every day not yet published, up to yesterday: Postgres upserts (one transaction per day), DynamoDB puts, S3 copies, and SFTP uploads written as `.part` and renamed. Every write replaces by key, so a rerun is harmless, and a missed day is caught up on the next run.
+4. The Databricks job `retailpulse-source-simulator` runs it at 06:10 UTC on serverless, inside the window when RDS and the SFTP server are up. It is defined in `databricks.yml` and deployed with `databricks bundle deploy`.
+
+On 2026-11-03 the sources held 43,637 customers, 194,797 orders, 329,009 order lines, 185,537 shipments, 4,895 S3 files and 625 SFTP files, all checked against the day folders.
+
+## Reading the sources
+
+What the bronze layer works with. Connection details are in SSM Parameter Store under `/retailpulse/dev/`; Databricks reads them with the `pipelines` IAM user, whose key is in the `retailpulse-dev` secret scope (`aws_access_key_id`, `aws_secret_access_key`). `databricks/notebooks/01_source_connectivity_test.py` shows each connection.
+
+| Source | Where | Login | New data appears |
+|---|---|---|---|
+| Orders database | `postgres/host`, database `retailpulse`, schema `shop`, TLS required | `postgres/reader_username` / `postgres/reader_password` (read-only) | Rows inserted and updated in place; pull incrementally on `updated_at` |
+| Carrier API | `carrier_api/url`, header `x-api-key: <carrier_api/api_key>` | API key | `GET ?updated_since=<ISO>&limit=<=1000`, then follow `next_page_token`; no `updated_since` pages through everything |
+| File drop | bucket `s3/sources_bucket`: `pos_sales/landing_date=YYYY-MM-DD/`, `promotions/export_date=YYYY-MM-DD/` | IAM `pipelines` user | New files each morning; about 3% of POS files land 2 to 3 days late, some are resent |
+| SFTP | host `sftp/host` (changes when the server restarts), user `sftp/username`, key `sftp/private_key` | ED25519 key | `3pl/inventory/` and `suppliers/deliveries/` daily; skip `*.part`; move pulled files to `archive/` |
+
+RDS and the SFTP server run 06:00 to 08:00 UTC. Outside that window, start them with `make sources-up` (or `rds:StartDBInstance` / `ec2:StartInstances`, which the `pipelines` user may call) and stop them with `make sources-down`.
+
 ## Repository layout
 
 ```
@@ -122,11 +146,17 @@ make infra-destroy                 # remove everything
 │   ├── master.py         # products, stores, customers, suppliers, promotions
 │   ├── activity/         # day-by-day simulation (orders, POS, shipments, returns, stock)
 │   ├── sources/          # one writer per source system, plus the Postgres DDL
-│   └── simulate.py       # command line entry point
+│   ├── simulate.py       # command line entry point: the whole dataset at one moment
+│   ├── daily.py          # the same data split into one folder of changes per day
+│   └── publish.py        # applies pending days to the live AWS sources
 ├── contracts/           # schema contract (YAML) for each source feed
 ├── infra/terraform/     # AWS sources and Databricks objects as code
 ├── services/            # Lambda code for the mock carrier API
-├── databricks/          # Asset Bundle: ingestion jobs, bronze and silver pipelines
+├── databricks.yml       # Asset Bundle: the source simulator job (pipelines can be added)
+├── databricks/
+│   ├── resources/       # bundle job definitions
+│   ├── simulator/       # job entry point for the daily publisher
+│   ├── notebooks/       # connectivity checks
 │   └── gold/            # reserved for the snowflake model
 ├── docs/                # project plan, architecture decisions (ADRs), data dictionary
 ├── tests/
@@ -140,7 +170,7 @@ make infra-destroy                 # remove everything
 | M0 Scaffold | Repo layout, README, project plan, CI skeleton | Done |
 | M1 Data generator | Seeded master data and generators for every source, data contracts, tests | Done |
 | M2 AWS sources | Terraform for S3, RDS, carrier API, SFTP server, secrets, IAM, budget alert | Done |
-| M3 Load the sources | Seed 90 days of history into each source, then a daily simulator | Planned |
+| M3 Load the sources | History since 2026-06-30 in every source, then a daily simulator job in Databricks | Done |
 | M4 Databricks foundation | Catalogs, schemas, storage credential, external locations, secret scope | Planned |
 | M5 Bronze | One ingestion job per source, with audit columns and watermarks | Planned |
 | M6 Silver | Cleaning, dedupe, conformed keys, currency and time zones, SCD2, quarantine | Planned |

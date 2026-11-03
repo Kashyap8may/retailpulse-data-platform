@@ -145,15 +145,22 @@ TABLE_COLUMNS = {
 LOAD_ORDER = list(TABLE_COLUMNS)
 
 
+def row_as_of(rec: dict, as_of: datetime) -> dict | None:
+    """A record with a status history as its database row at ``as_of``; None before it existed."""
+    seen = status_as_of(rec["_events"], as_of)
+    if seen is None:
+        return None
+    row = public(rec)
+    row["status"], row["updated_at"] = seen
+    row["created_at"] = rec["_events"][0][0]
+    return row
+
+
 def _with_status(records: list[dict], as_of: datetime):
     for rec in records:
-        seen = status_as_of(rec["_events"], as_of)
-        if seen is None:
-            continue
-        row = public(rec)
-        row["status"], row["updated_at"] = seen
-        row["created_at"] = rec["_events"][0][0]
-        yield row
+        row = row_as_of(rec, as_of)
+        if row is not None:
+            yield row
 
 
 def postgres_tables(md: MasterData, sim: SimulationResult, as_of: datetime) -> dict[str, list[dict]]:

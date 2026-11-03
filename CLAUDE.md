@@ -39,11 +39,16 @@ data_generator/
   activity/simulation.py  day-by-day simulation: orders, POS, shipments, returns, stock, POs
   sources/             one writer per source + postgres_schema.sql (DDL for RDS)
   simulate.py          CLI: python -m data_generator.simulate --out output [--scale 0.05 --days 14]
+  daily.py             CLI: the year split into one folder of changes per day (uploaded to the simulator bucket)
+  publish.py           CLI: applies pending days to the live sources (run daily by the Databricks job)
 contracts/             YAML data contract per feed
 docs/                  project-plan.md, adr/, HANDOFF.md
-databricks/notebooks/  00_connectivity_check.py (run once in the Free Edition workspace)
-infra/terraform/       empty, M2 goes here
-services/carrier_api/  empty, Lambda for the mock carrier API goes here (M2)
+databricks.yml         Asset Bundle; databricks/resources/ holds the job definitions
+databricks/simulator/  entry point of the retailpulse-source-simulator job
+databricks/notebooks/  00_connectivity_check.py, 01_source_connectivity_test.py
+infra/terraform/       bootstrap (state bucket), modules/sources, envs/dev
+infra/scripts/         store-aws-key-in-databricks.ps1 (IAM key straight into the secret scope)
+services/carrier_api/  Lambda handler for the mock carrier API
 databricks/gold/       reserved for the owner's snowflake model
 tests/
 ```

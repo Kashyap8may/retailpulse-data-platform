@@ -98,10 +98,23 @@ resource "aws_iam_user_policy" "pipelines" {
         Resource = "${local.sources_arn}/*"
       },
       {
+        # An allow-list instead of the whole path: the pipelines must not read the admin password
+        # or learn the simulator bucket, and a path-level grant would expose both.
         Effect   = "Allow"
-        Action   = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
-        Resource = ["${local.parameter_arn}", "${local.parameter_arn}/*"]
+        Action   = ["ssm:GetParameter", "ssm:GetParameters"]
+        Resource = [for name in local.pipeline_parameters : "${local.parameter_arn}/${name}"]
       },
     ], local.wake_sources)
   })
+}
+
+locals {
+  pipeline_parameters = [
+    "aws/region",
+    "postgres/host", "postgres/port", "postgres/database", "postgres/reader_username", "postgres/reader_password",
+    "carrier_api/url", "carrier_api/api_key",
+    "s3/sources_bucket",
+    "sftp/host", "sftp/port", "sftp/username", "sftp/private_key",
+    "rds/instance_identifier", "sftp/instance_id",
+  ]
 }

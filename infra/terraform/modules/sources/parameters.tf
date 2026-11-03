@@ -8,6 +8,7 @@ locals {
     "postgres/port"            = tostring(aws_db_instance.orders.port)
     "postgres/database"        = aws_db_instance.orders.db_name
     "postgres/username"        = aws_db_instance.orders.username
+    "postgres/reader_username" = "retailpulse_reader"
     "sftp/username"            = "retailpulse"
     "sftp/port"                = "22"
     "carrier_api/url"          = "${aws_api_gateway_stage.v1.invoke_url}/shipments"
@@ -19,9 +20,10 @@ locals {
     "sftp/instance_id"         = aws_instance.sftp.id
   }
   secret_parameters = {
-    "postgres/password"   = random_password.db.result
-    "sftp/private_key"    = tls_private_key.sftp.private_key_openssh
-    "carrier_api/api_key" = aws_api_gateway_api_key.carrier.value
+    "postgres/password"        = random_password.db.result
+    "postgres/reader_password" = random_password.db_reader.result
+    "sftp/private_key"         = tls_private_key.sftp.private_key_openssh
+    "carrier_api/api_key"      = aws_api_gateway_api_key.carrier.value
   }
 }
 
